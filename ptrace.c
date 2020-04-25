@@ -98,7 +98,7 @@ static int init_syscall_monitoring(void)
 // Exit of module
 static void exit_syscall_monitoring(void)
 {
-  printk((KERN_INFO "System call monitoring exited.\n");
+  printk(KERN_INFO "System call monitoring exited.\n");
   return;
 }
 
