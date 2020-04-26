@@ -84,7 +84,7 @@ procfile_read(char *buffer,
 
 int init_module()
 {
-	Our_Proc_File = create_proc_entry(procfs_name, 0644, NULL);
+	Our_Proc_File =  proc_create(procfs_name, 0644, NULL);
 
 	if (Our_Proc_File == NULL) {
 		remove_proc_entry(procfs_name, &proc_root);
