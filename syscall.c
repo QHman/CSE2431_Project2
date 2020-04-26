@@ -1,13 +1,3 @@
-/*
-** syscall.c for lkm_syscall
-**
-** Originally made by xsyann
-** Contact <contact@xsyann.com>
-**
-** Current version built by Yuan Xiao
-** Contact <xiao.465@osu.edu>
-*/
-
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
@@ -24,20 +14,35 @@ MODULE_VERSION("0.1");
 #define SYSCALL_NI __NR_tuxcall
 
 static ulong *syscall_table = NULL;
-
 static void *original_syscall = NULL;
-
 static char buffer[40];
+char *buff;
+//Proc File variables
+const char procFile[] = "syscall_mal";
+struct proc_dir_entry *proc_input;
 
+int procfile_read(char *buff,char **buff_location,
+	      off_t offset, int buffer_length, int *eof, void *data)
+{
+	int buff_size;
+	if (offset > 0) {
+		buff_size  = 0;
+	} else {
+		buff_size = sprintf(buff, "HelloWorld!\n"); //Change
+	}
 
+	return buff_size;
+}
 
 static unsigned long lkm_syscall(const char *string)
 {
+
         if (copy_from_user(buffer, string, 40)) {
                 return -EFAULT;
         }
         buffer[39] = 0;
         printk("Input address %s\n", buffer);
+        proc_input->read_proc = procfile_read(buff);
         return 0;
 }
 
@@ -84,6 +89,16 @@ static void replace_syscall(ulong offset, ulong func_address)
 
 static int init_syscall(void)
 {
+        proc_input = create_proc_entry(procFile, 0644, NULL);
+        if (proc == NULL) {
+          remove_proc_entry(procFile, NULL);
+          return -ENOMEM;
+          }
+        proc_input->read_proc = procfile_read;
+        proc_input->mode = S_IFREG | S_IRUGO;
+	      proc_input->uid = 0;
+	      proc_input->gid = 0;
+	      proc_input->size = 50;
         printk(KERN_INFO "Custom syscall loaded\n");
         replace_syscall(SYSCALL_NI, (ulong)lkm_syscall);
         return 0;
@@ -91,6 +106,7 @@ static int init_syscall(void)
 
 static void cleanup_syscall(void)
 {
+        remove_proc_entry(procFile,NULL);
         page_read_write((ulong)syscall_table);
         syscall_table[SYSCALL_NI] = (ulong)original_syscall;
         page_read_only((ulong)syscall_table);
