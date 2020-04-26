@@ -1,54 +1,114 @@
-/*
-  A kernel module to list process by their names. Print when loading the module.
-  In the terminal, compile this module with "make" and load it with "sudo insmod process.ko". 
-  Check the result of printk by “dmesg”
-  Unload it with "sudo rmmod process.ko".
-*/
+/**
+ *  procfs2.c -  create a "file" in /proc
+ *
+ */
 
-#include <linux/kernel.h>
-#include <linux/module.h>
-#include <linux/init.h>
-#include <linux/sched.h> // task_struct definition
-#include <asm/unistd.h>
-#include <linux/list.h>
-#include <linux/init_task.h>
+#include <linux/module.h>	/* Specifically, a module */
+#include <linux/kernel.h>	/* We're doing kernel work */
+#include <linux/proc_fs.h>	/* Necessary because we use the proc fs */
+#include <asm/uaccess.h>	/* for copy_from_user */
 
-#ifndef __KERNEL__
-#define __KERNEL__
-#endif
+#define PROCFS_MAX_SIZE		1024
+#define PROCFS_NAME 		"buffer1k"
 
-// Print all running processes with their names
-void print_task_by_name(void) {
+/**
+ * This structure hold information about the /proc file
+ *
+ */
+static struct proc_dir_entry *Our_Proc_File;
 
-  // The struct used for info of a process
-  struct task_struct* task;
+/**
+ * The buffer used to store character for this module
+ *
+ */
+static char procfs_buffer[PROCFS_MAX_SIZE];
 
-  // Go over through the list of processes
-  for_each_process(task) {
-    // Print to syslog
-    printk("Current process: %s, PID: %d\n", task->comm, task->pid);
-  }
+/**
+ * The size of the buffer
+ *
+ */
+static unsigned long procfs_buffer_size = 0;
 
-  return;
-}
-
-// Initialization of module
-int __init init_MyKernelModule(void)
+/**
+ * This function is called then the /proc file is read
+ *
+ */
+int
+procfile_read(char *buffer,
+	      char **buffer_location,
+	      off_t offset, int buffer_length, int *eof, void *data)
 {
-  printk("Process List Lookup Module Init.\n");
-  print_task_by_name();
-  return 0;
+	int ret;
+
+	printk(KERN_INFO "procfile_read (/proc/%s) called\n", PROCFS_NAME);
+
+	if (offset > 0) {
+		/* we have finished to read, return 0 */
+		ret  = 0;
+	} else {
+		/* fill the buffer, return the buffer size */
+		memcpy(buffer, procfs_buffer, procfs_buffer_size);
+		ret = procfs_buffer_size;
+	}
+
+	return ret;
 }
 
-// Exit of module
-void __exit exit_MyKernelModule(void)
+/**
+ * This function is called with the /proc file is written
+ *
+ */
+int procfile_write(struct file *file, const char *buffer, unsigned long count,
+		   void *data)
 {
-  printk("Process List Lookup Module Exit.\n");
-  return;
+	/* get buffer size */
+	procfs_buffer_size = count;
+	if (procfs_buffer_size > PROCFS_MAX_SIZE ) {
+		procfs_buffer_size = PROCFS_MAX_SIZE;
+	}
+
+	/* write data to the buffer */
+	if ( copy_from_user(procfs_buffer, buffer, procfs_buffer_size) ) {
+		return -EFAULT;
+	}
+
+	return procfs_buffer_size;
 }
 
-module_init(init_MyKernelModule);
-module_exit(exit_MyKernelModule);
+/**
+ *This function is called when the module is loaded
+ *
+ */
+int init_module()
+{
+	/* create the /proc file */
+	proc_create(PROCFS_NAME, 0, NULL, Our_Proc_File);
 
-MODULE_LICENSE("GPL v2");
-MODULE_DESCRIPTION("A kernel module to list process by their names");
+	if (Our_Proc_File == NULL) {
+		remove_proc_entry(PROCFS_NAME, &proc_root);
+		printk(KERN_ALERT "Error: Could not initialize /proc/%s\n",
+			PROCFS_NAME);
+		return -ENOMEM;
+	}
+
+	Our_Proc_File->read_proc  = procfile_read;
+	Our_Proc_File->write_proc = procfile_write;
+	Our_Proc_File->owner 	  = THIS_MODULE;
+	Our_Proc_File->mode 	  = S_IFREG | S_IRUGO;
+	Our_Proc_File->uid 	  = 0;
+	Our_Proc_File->gid 	  = 0;
+	Our_Proc_File->size 	  = 37;
+
+	printk(KERN_INFO "/proc/%s created\n", PROCFS_NAME);
+	return 0;	/* everything is ok */
+}
+
+/**
+ *This function is called when the module is unloaded
+ *
+ */
+void cleanup_module()
+{
+	remove_proc_entry(PROCFS_NAME, &proc_root);
+	printk(KERN_INFO "/proc/%s removed\n", PROCFS_NAME);
+}
