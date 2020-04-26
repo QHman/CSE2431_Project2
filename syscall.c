@@ -13,6 +13,7 @@
 #include <linux/unistd.h>
 #include <linux/syscalls.h>
 #include <linux/kallsyms.h>
+#include <linux/proc_fs.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Andrew Cantor & Quinton Hiler");
@@ -107,7 +108,6 @@ static int init_syscall(void)
           remove_proc_entry(procFile, NULL);
           return -ENOMEM;
         }
-        proc_input->read_proc = procfile_read;
         proc_input->mode = S_IFREG | S_IRUGO;
         proc_input->uid = 0;
         proc_input->gid = 0;
