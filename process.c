@@ -29,13 +29,15 @@ static struct file_operations proc_fops = {
 
 static int hello_init(void)
 {
-
   proc_create("tlc_proc_a", 0444, NULL, &proc_fops);
+  proc_buffer[proc_buffer_size] = '!';
+  proc_buffer_size += 1;
   return 0;
 }
 
 static void hello_exit(void)
-{  remove_proc_entry("tlc_proc_a", NULL);
+{
+  remove_proc_entry("tlc_proc_a", NULL);
 }
 
 module_init(hello_init);
