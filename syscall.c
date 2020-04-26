@@ -31,7 +31,7 @@ asmlinkage int (*old_write)(int fildes, const void *buf, size_t nbytes);
 static unsigned long new_write(int fildes, const void *buf, size_t nbytes)
 {
 
-	static char buffer[nbytes];	
+	static char buffer[nbytes];
 
         if (copy_from_user(buffer, buf, nbytes)) {
                 return -EFAULT;
@@ -73,9 +73,9 @@ static void replace_syscall(ulong offset, ulong func_address)
                 page_read_write((ulong)syscall_table);
 
                 original_syscall = (void *)(syscall_table[offset]);
-                
+
                 syscall_table[offset] = func_address;
-                
+
                 page_read_only((ulong)syscall_table);
         }
 }
