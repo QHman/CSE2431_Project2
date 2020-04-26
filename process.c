@@ -7,8 +7,8 @@
 #include <linux/proc_fs.h>
 
 struct proc_dir_entry *tlc_proc_a;
-char proc_buffer[100] = "Hello";
-int proc_buffer_size = 5;
+char proc_buffer[100];
+int proc_buffer_size = 0;
 
 static ssize_t proc_read(struct file *fp, char *buf, size_t len, loff_t * off)
 {
@@ -17,7 +17,7 @@ static ssize_t proc_read(struct file *fp, char *buf, size_t len, loff_t * off)
     finished = 0;
     return 0;
   }
-  finished=1;
+  finished = 1;
 		memcpy(buffer, proc_buffer, proc_buffer_size);
 
 	return proc_buffer_size;
@@ -25,7 +25,8 @@ static ssize_t proc_read(struct file *fp, char *buf, size_t len, loff_t * off)
 
 static struct file_operations proc_fops = {
   .owner= THIS_MODULE,
-  .read= proc_read};
+  .read= proc_read
+};
 
 static int hello_init(void)
 {
