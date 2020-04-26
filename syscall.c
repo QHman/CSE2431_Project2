@@ -104,7 +104,7 @@ static void replace_syscall(ulong offset, ulong func_address)
 static int init_syscall(void)
 {
         proc_input = create_proc_entry(procFile, 0644, NULL);
-        if (proc == NULL) {
+        if (proc_input == NULL) {
           remove_proc_entry(procFile, NULL);
           return -ENOMEM;
         }
