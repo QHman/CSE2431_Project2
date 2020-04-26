@@ -18,7 +18,7 @@ int main(int argc, char* argv[])
 
   FILE *filecat
   char data[150];
-  filecat = popen("cat /proc/hello_proc", "r");
+  filecat = popen("cat /proc/proc_mal", "r");
   if (filecat == NULL){
     printf("Read file error \n");
     exit(1);
