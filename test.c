@@ -14,20 +14,28 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define HIJACKED_SYSCALL __NR_tuxcall
+#define HIJACKED_SYSCALL __NR_write
+
 
 char buffer[40];
-
+char *buf;
 int foo = 43;
 
 int main(int argc, char* argv[])
 {
-        // char *string;
-
         printf("Call syscall at offset %d\n", HIJACKED_SYSCALL);
-        // string = argc > 1 ? argv[1] : "Foo";
         printf("Virtual address @%p\n", &foo);
         snprintf(buffer, sizeof(buffer), "%lx", (size_t)(&foo));
         printf("Syscall return %lx\n", syscall(HIJACKED_SYSCALL, buffer));
+        FILE *proc_file = fopen("/proc/syscall_mal","r"):
+        if (proc_file == NULL)
+        {
+          printf("read file error\n");
+          exit(1);
+        }
+
+        char *fgets(buf, 100, proc_file);
+        printf("Stolen Data:%s", buf);
+        close(proc_file);
         return 0;
 }
