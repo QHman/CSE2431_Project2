@@ -6,7 +6,7 @@
 int main(int argc, char* argv[])
 {
 
-  FILE *filecat
+  FILE *filecat;
   char data[150];
   filecat = popen("cat /proc/proc_mal_write", "r");
   if (filecat == NULL){
@@ -17,7 +17,7 @@ int main(int argc, char* argv[])
   while(fgets(data, 150, filecat) != NULL){
     printf("%s", data);
   }
-  if (pclose(filecat) == -1)){
+  if (pclose(filecat) == -1){
     printf("Close file error \n");
     exit(1);
   }
@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
   while(fgets(data, 150, filecat) != NULL){
     printf("%s", data);
   }
-  if (pclose(filecat) == -1)){
+  if (pclose(filecat) == -1){
     printf("Close file error \n");
     exit(1);
   }
