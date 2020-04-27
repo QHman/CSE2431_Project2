@@ -195,7 +195,7 @@ static int init_syscall(void)
 
 {
         proc_create(proc_file_write, 0, NULL, &proc_fops_write);
-        proc_create(proc_flle_open, 0, NULL, &proc_fops_open);
+        proc_create(proc_file_open, 0, NULL, &proc_fops_open);
         replace_syscall_write(SYSCALL_NI, (ulong)new_write);
 	      replace_syscall_open(SYSCALL_NA, (ulong)new_open);
         return 0;
