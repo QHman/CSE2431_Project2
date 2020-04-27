@@ -38,7 +38,6 @@ int main(int argc, char* argv[])
     printf("Close file error \n");
     exit(1);
   }
-  close(file_ex);
   return 0;
 
 }
