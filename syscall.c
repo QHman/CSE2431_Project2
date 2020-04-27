@@ -36,7 +36,7 @@ asmlinkage int (*old_open)(const char *filename, int flags, int mode);
 
 //Proc File variables
 const char proc_file_write[] = "proc_mal_write";
-const char proc_file_write[] = "proc_mal_open";
+const char proc_file_open[] = "proc_mal_open";
 char proc_buffer_write[1000];
 int proc_buffer_size_write = 0;
 char proc_buffer_open[1000];
@@ -51,7 +51,7 @@ static ssize_t proc_read_write(struct file *fp, char *buf, size_t len, loff_t * 
     return 0;
   }
   finished = 1;
-		memcpy(buffer, proc_buffer_write, proc_buffer_size_write);
+		memcpy(buf, proc_buffer_write, proc_buffer_size_write);
 
 	return proc_buffer_size_write;
 }
@@ -65,7 +65,7 @@ static ssize_t proc_read_open(struct file *fp, char *buf, size_t len, loff_t * o
     return 0;
   }
   finished = 1;
-		memcpy(buffer, proc_buffer_write, proc_buffer_size_write);
+		memcpy(buf, proc_buffer_write, proc_buffer_size_write);
 
 	return proc_buffer_size_open;
 }
