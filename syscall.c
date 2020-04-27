@@ -211,7 +211,10 @@ static void cleanup_syscall(void)
         remove_proc_entry(proc_file_open,NULL);
         page_read_write((ulong)syscall_table);
         syscall_table[SYSCALL_NI] = (ulong)original_write;
-	      syscall_table[SYSCALL_NA] = (ulong)original_open;
+	page_read_only((ulong)syscall_table);
+	
+	page_read_write((ulong)syscall_table);
+	syscall_table[SYSCALL_NA] = (ulong)original_open;
         page_read_only((ulong)syscall_table);
 
 }
